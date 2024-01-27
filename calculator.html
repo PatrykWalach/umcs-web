@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      #app {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        max-width: 37.5rem;
+        margin: auto;
+      }
+      input {
+        grid-column: span 4;
+        min-height: 3rem;
+      }
+      output {
+        grid-column: span 4;
+        min-height: 3rem;
+      }
+
+      button {
+        font-size: large;
+        min-width: 3rem;
+        min-height: 3rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script>
+      const operators = ["+", "*", "/"];
+
+      function calculate() {
+        const rules = [
+          ["NUMBER", /^[\d\.]+/],
+          ["ADD_OP", /^[\+\-]/],
+          ["MUL_OP", /^[\*\/]/],
+        ];
+        let cursor = 0;
+
+        let tokens = [];
+
+        let input = trim(mem.value);
+
+        if (!input) {
+          out.textContent = "";
+          return
+        }
+
+        tokenize: while (cursor < input.length) {
+          for (const [type, rule] of rules) {
+            const match = input.substring(cursor).match(rule);
+
+            if (!match) {
+              continue;
+            }
+
+            tokens.push({ type, value: match[0] });
+            cursor += match[0].length;
+            continue tokenize;
+          }
+
+          throw new Error(`Unexpected token ${input.substring(cursor)}`);
+        }
+
+        tokens.reverse();
+
+        function AdditiveExpression() {
+          let left = MultiplicativeExpression();
+          while (tokens.at(-1)?.type === "ADD_OP") {
+            const { value } = tokens.pop();
+
+            let right = MultiplicativeExpression();
+
+            if (value == "+") {
+              left = left + right;
+              continue;
+            }
+            if (value == "-") {
+              left = left - right;
+              continue;
+            }
+            throw new Error(`Unknown AdditiveExpression operation ${value}`);
+          }
+          return left;
+        }
+
+        function PrimaryExpression() {
+          if (tokens.at(-1)?.type === "NUMBER")
+            return parseFloat("0" + tokens.pop().value);
+
+          if (
+            tokens.at(-1)?.type === "ADD_OP" &&
+            tokens.at(-1)?.value === "-"
+          ) {
+            tokens.pop();
+            return -parseFloat("0" + tokens.pop().value);
+          }
+
+          throw new Error(`Unknown PrimaryExpression ${tokens.at(-1)?.value}`);
+        }
+
+        function MultiplicativeExpression() {
+          let left = PrimaryExpression();
+          while (tokens.at(-1)?.type === "MUL_OP") {
+            const { value } = tokens.pop();
+
+            let right = PrimaryExpression();
+
+            if (value == "*") {
+              left = left * right;
+              continue;
+            }
+            if (value == "/") {
+              left = left / right;
+              continue;
+            }
+            throw new Error(
+              `Unknown MultiplicativeExpression operation ${value}`
+            );
+          }
+          return left;
+        }
+
+        out.textContent = AdditiveExpression();
+      }
+
+      const app = document.getElementById("app");
+      const mem = app.appendChild(document.createElement("input"));
+      mem.readOnly = true;
+
+      const out = document.createElement("output");
+      app.appendChild(out);
+
+      const clear = document.createElement("button");
+      clear.textContent = "AC";
+
+      clear.onclick = () => {
+        mem.value = "";
+        calculate();
+      };
+      app.appendChild(clear);
+
+      let positions = [
+        `7/2`,
+        `6/1`,
+        `6/2`,
+        `6/3`,
+        `5/1`,
+        `5/2`,
+        `5/3`,
+        `4/1`,
+        `4/2`,
+        `4/3`,
+      ];
+
+      for (let i = 0; i < 10; i++) {
+        let button = document.createElement("button");
+        button.textContent = i;
+        button.onclick = append;
+        button.style = `grid-area:${positions[i]}`;
+        button.dataset.value = i;
+        app.appendChild(button);
+      }
+
+      positions = [`6/4`, `4/4`, `3/4`];
+
+      for (let i = 0; i < operators.length; i++) {
+        let operator = operators[i];
+        let button = document.createElement("button");
+        button.textContent = operator;
+        button.onclick = () => {
+          mem.value = trim(mem.value);
+          mem.value += operator;
+        };
+        button.style = `grid-area:${positions[i]}`;
+        app.appendChild(button);
+      }
+
+      function trim(input) {
+        if (input.endsWith("-")) {
+          input = input.substring(0, input.length - 1);
+        }
+
+        if (operators.some((operator) => input.endsWith(operator))) {
+          input = input.substring(0, input.length - 1);
+        }
+
+        return input;
+      }
+
+      let minus = document.createElement("button");
+      minus.textContent = "-";
+      minus.style = `grid-area:5/4`;
+      minus.onclick = () => {
+        if (!mem.value.endsWith("-")) {
+          mem.value += "-";
+        }
+      };
+      app.appendChild(minus);
+
+      const equal = document.createElement("button");
+      equal.textContent = "=";
+      equal.style = `grid-area:7/4;background:orange`;
+      equal.onclick = () => {
+        mem.value = out.textContent;
+        out.textContent = "";
+      };
+      app.appendChild(equal);
+
+      const dot = document.createElement("button");
+      dot.textContent = ".";
+      dot.style = `grid-area:7/3`;
+      dot.onclick = () => {
+        if (!/\.\d*$/.test(mem.value)) {
+          mem.value += ".";
+        }
+      };
+      app.appendChild(dot);
+
+      const del = document.createElement("button");
+      del.textContent = "<-";
+      del.style = `grid-area:3/3`;
+      del.onclick = () => {
+        mem.value = mem.value.substring(0, mem.value.length - 1);
+        calculate();
+      };
+      app.appendChild(del);
+
+      function append() {
+        mem.value += this.dataset.value;
+        calculate();
+      }
+    </script>
+  </body>
+</html>
